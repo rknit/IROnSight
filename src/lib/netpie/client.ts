@@ -67,7 +67,7 @@ class NetpieClient {
 
     this.connecting = new Promise((resolve, reject) => {
       try {
-        const clientId = `${this.config.key}:${this.config.alias}`;
+        const clientId = `${this.config.appId}:${this.config.alias}`;
         const username = this.config.key;
         const password = this.config.secret;
 
