@@ -1,98 +1,172 @@
-# Ironsight
+# IR-On-Sight (Ironsight)
 
-A modern Next.js application built with TypeScript, Tailwind CSS, and Supabase.
+A web application for controlling microcontrollers via NETPIE IoT platform. Features remote IR controller for air conditioners and real-time temperature reporting.
+
+## Overview
+
+Ironsight is an IoT dashboard designed to work with microcontrollers that provide IR (infrared) transmission capabilities and temperature sensing. The webapp connects to your microcontroller via the NETPIE platform, enabling you to:
+
+- Monitor real-time temperature readings from connected sensors
+- Control air conditioners remotely via IR commands
+- Select IR protocols (planned feature)
 
 ## Tech Stack
 
-- **Framework**: [Next.js 16](https://nextjs.org) with App Router
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Backend**: [Supabase](https://supabase.com/) (Authentication, Database, Storage)
-- **Font**: [Geist](https://vercel.com/font) optimized with `next/font`
+- Next.js, React, TypeScript, Tailwind CSS
+- Supabase (PostgreSQL database with Realtime subscriptions)
+- NETPIE 2020 IoT Platform for device communication
+
+## Prerequisites
+
+- Node.js 18.17 or later
+- [Supabase](https://supabase.com) project
+- [NETPIE](https://netpie.io) account and device credentials
+- Compatible microcontroller with:
+  - IR transmitter capability
+  - Temperature sensor
+  - NETPIE connectivity
 
 ## Getting Started
 
-### Prerequisites
+### 1. Environment Variables
 
-- Node.js 18.17 or later
-- npm, yarn, pnpm, or bun package manager
-
-### Environment Variables
-
-Create a `.env.local` file in the root directory with your Supabase credentials:
+Create a `.env.local` file in the root directory:
 
 ```env
+# Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# NETPIE IoT Platform
+NETPIE_CLIENT_ID=your-client-id
+NETPIE_TOKEN=your-token
+NETPIE_SECRET=your-secret
 ```
 
-You can find these values in your [Supabase project settings](https://app.supabase.com/project/_/settings/api).
+**Supabase credentials**: Found in your [Supabase project settings](https://app.supabase.com/project/_/settings/api)
 
-### Installation
+**NETPIE credentials**: Obtain from your [NETPIE device settings](https://portal.netpie.io)
 
-1. Install dependencies:
+### 2. Database Setup
+
+Apply the database migrations to your Supabase project:
 
 ```bash
+# Link to your project
+npx supabase link --project-ref your-project-ref
+
+# Apply migrations
+npx supabase db push
+```
+
+This will create the necessary tables:
+- `temperature_readings` - Stores temperature data with realtime enabled
+- `aircon_state` - Tracks air conditioner on/off state
+- `ir_protocols` - IR protocol catalog (TBD)
+
+### 3. Installation
+
+```bash
+# Install dependencies
 npm install
-```
 
-2. Run the development server:
-
-```bash
+# Run development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
-You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Microcontroller Setup
 
-### Build for Production
+Your microcontroller should be configured to:
 
-```bash
-npm run build
-npm start
-```
+**Subscribe to NETPIE topic** for receiving commands:
+- Topic: `@msg/aircon/control`
+- Message format:
+  ```json
+  {
+    "is_on": true,
+    "protocol": {
+      "id": "uuid",
+      "name": "NEC",
+      "protocol_type": "nec"
+    },
+    "timestamp": "2025-11-10T12:00:00Z"
+  }
+  ```
+
+**Send temperature data** to the webhook endpoint:
+- Endpoint: `POST https://your-app-url/api/webhook`
+- Payload:
+  ```json
+  {
+    "temperature": 25.5,
+    "unit": "celsius"
+  }
+  ```
+
+## Features
+
+### Real-time Temperature Monitoring
+- Live temperature display with automatic updates
+- Unit conversion (Celsius ↔ Fahrenheit)
+- Timestamp of latest reading
+- Powered by Supabase Realtime subscriptions
+
+### Air Conditioner Control
+- Toggle AC on/off remotely
+- Visual status indicator with pulse animation
+- Commands sent via NETPIE to microcontroller
+- Automatic state rollback on failure
+- Last updated timestamp
+
+### IR Protocol Catalog
+- Protocol selection interface (planned feature)
+- Support for common IR protocols: NEC, RC5, RC6, Sony SIRC, Samsung, LG, Panasonic, Sharp
+
+## API Endpoints
+
+- `GET /api/temperature` - Fetch latest temperature reading
+- `POST /api/temperature` - Insert new temperature reading
+- `POST /api/webhook` - Receive temperature data from IoT devices
+- `GET /api/aircon` - Get current AC state
+- `POST /api/aircon` - Toggle AC state and publish to NETPIE
 
 ## Project Structure
 
 ```
 src/
-├── app/              # Next.js app router pages
+├── app/
+│   ├── page.tsx              # Main dashboard
+│   └── api/                  # API routes
+│       ├── temperature/
+│       ├── aircon/
+│       └── webhook/
+├── components/
+│   ├── dashboard/
+│   │   ├── TemperatureDisplay.tsx
+│   │   ├── AirconControl.tsx
+│   │   └── ProtocolCatalog.tsx
+│   └── ui/                   # Reusable UI components
 ├── lib/
-│   └── supabase/    # Supabase client configuration
-│       ├── client.ts    # Browser client
-│       ├── server.ts    # Server client
-│       └── middleware.ts # Session management
-└── proxy.ts          # Next.js proxy for session refresh
+│   ├── supabase/             # Supabase clients
+│   └── netpie/               # NETPIE REST API client
+└── types/                    # TypeScript type definitions
 ```
 
-## Supabase Integration
+## Development
 
-This project includes pre-configured Supabase clients for:
+```bash
+# Run development server
+npm run dev
 
-- **Browser**: Use `createClient()` from `@/lib/supabase/client` in Client Components
-- **Server**: Use `createClient()` from `@/lib/supabase/server` in Server Components and Route Handlers
-- **Proxy**: Automatic session refresh for authenticated users via `src/proxy.ts`
+# Build for production
+npm run build
 
-## Development Guide
+# Start production server
+npm start
+```
 
-See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed development guide including:
-- Authentication patterns
-- Database operations
-- Styling guidelines
-- Best practices
-- Common issues and solutions
+## License
 
-## Learn More
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Supabase Documentation](https://supabase.com/docs)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-- [TypeScript Documentation](https://www.typescriptlang.org/docs)
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
-
-Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
+MIT
